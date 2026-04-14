@@ -4,9 +4,6 @@ on:
   push:
     branches: [ "main" ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,17 +12,24 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Configurar Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+
       - name: Dar permissão ao Gradle
         run: chmod +x gradlew
 
-      - name: Build do AAB
-        run: ./gradlew bundleRelease
+      - name: Build signed AAB
+        run: ./gradlew bundleRelease \
+          -Pandroid.injected.signing.store.file=keystore.jks \
+          -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
       - name: Upload do AAB
         uses: actions/upload-artifact@v4
